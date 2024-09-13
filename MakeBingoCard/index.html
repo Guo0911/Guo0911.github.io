@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>製作賓果卡</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(5, 70px);
+            gap: 10px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        input {
+            width: 70px;
+            height: 70px;
+            text-align: center;
+            font-size: 24px;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        input.duplicate, input.out-of-range {
+            border-color: #e74c3c;
+            background-color: #fad7d3;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #error {
+            color: #e74c3c;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        #output {
+            margin-top: 20px;
+        }
+        #versionToggle {
+            margin-bottom: 20px;
+        }
+        canvas {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>5x5 格子數字生成器 - 最終增強版</h1>
+    <div id="versionToggle">
+        <button onclick="toggleVersion(99)">1-99 版本</button>
+        <button onclick="toggleVersion(50)">1-50 版本</button>
+    </div>
+    <div id="grid"></div>
+    <div class="button-group">
+        <button onclick="randomFill()">隨機填充數字</button>
+        <button onclick="generateImage()">生成圖片</button>
+    </div>
+    <div id="error"></div>
+    <div id="output"></div>
+
+    <script>
+        let maxNumber = 99;
+        const grid = document.getElementById('grid');
+        const errorDiv = document.getElementById('error');
+
+        function createGrid() {
+            grid.innerHTML = '';
+            for (let i = 0; i < 25; i++) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.addEventListener('input', (event) => {
+                    validateInput(event);
+                    checkDuplicatesAndRange();
+                });
+                grid.appendChild(input);
+            }
+        }
+
+        function toggleVersion(max) {
+            maxNumber = max;
+            createGrid();
+            errorDiv.textContent = '';
+            document.getElementById('output').innerHTML = '';
+        }
+
+        function validateInput(event) {
+            const value = event.target.value;
+            if (value !== '' && (isNaN(value) || value.includes('.'))) {
+                event.target.value = '';
+            }
+        }
+
+        function checkDuplicatesAndRange() {
+            const inputs = document.querySelectorAll('input');
+            const values = new Map();
+            inputs.forEach(input => {
+                input.classList.remove('duplicate');
+                input.classList.remove('out-of-range');
+            });
+
+            inputs.forEach(input => {
+                const value = input.value;
+                if (value !== '') {
+                    const numValue = parseInt(value);
+                    if (numValue < 1 || numValue > maxNumber) {
+                        input.classList.add('out-of-range');
+                    } else if (values.has(value)) {
+                        input.classList.add('duplicate');
+                        values.get(value).classList.add('duplicate');
+                    } else {
+                        values.set(value, input);
+                    }
+                }
+            });
+
+            const invalidInputs = document.querySelectorAll('.duplicate, .out-of-range');
+            if (invalidInputs.length > 0) {
+                errorDiv.textContent = '有重複或超出範圍的數字。';
+            } else {
+                errorDiv.textContent = '';
+            }
+        }
+
+        function randomFill() {
+            const numbers = Array.from({length: maxNumber}, (_, i) => i + 1);
+            const shuffled = numbers.sort(() => 0.5 - Math.random());
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach((input, index) => {
+                input.value = shuffled[index];
+            });
+            checkDuplicatesAndRange();
+        }
+
+        function generateImage() {
+            if (!validateGrid()) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 500;
+            canvas.height = 500;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, 500, 500);
+
+            ctx.strokeStyle = '#bdc3c7';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach((input, index) => {
+                const row = Math.floor(index / 5);
+                const col = index % 5;
+                const x = col * 100;
+                const y = row * 100;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, y, 100, 100);
+                ctx.strokeRect(x, y, 100, 100);
+
+                const value = input.value || '';
+                ctx.fillStyle = input.classList.contains('duplicate') || input.classList.contains('out-of-range') ? '#e74c3c' : '#2c3e50';
+                ctx.fillText(value, x + 50, y + 50);
+            });
+
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            output.appendChild(canvas);
+        }
+
+        function validateGrid() {
+            const inputs = document.querySelectorAll('input');
+            for (let input of inputs) {
+                if (input.value === '') {
+                    errorDiv.textContent = '請填寫所有格子。';
+                    return false;
+                }
+            }
+            if (document.querySelectorAll('.duplicate, .out-of-range').length > 0) {
+                errorDiv.textContent = '請修正重複或超出範圍的數字。';
+                return false;
+            }
+            errorDiv.textContent = '';
+            return true;
+        }
+
+        createGrid();
+    </script>
+</body>
+</html>
